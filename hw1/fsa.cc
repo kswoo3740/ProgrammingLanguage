@@ -12,14 +12,15 @@
 using namespace std;
 
 void NFAtoDFA (FiniteStateAutomaton& fsa, std::vector<FSATableElement> elements) {
+  // Change NFA to DFA
   queue<set<int> > states_queue;
   vector<FSAdfaElement> states;
   FSAdfaElement dfa_state;
   set<int> state;
   set<char> alphabet;
 
-  state.insert(1);
-  epsilon_state (elements, state, 1);
+  state.insert(1); // Insert start state
+  epsilon_state (elements, state, 1);  // Find all possible start state
   //cout<<"start state : ";
   //print_set(state);
   fsa.start_state = state;
@@ -27,32 +28,20 @@ void NFAtoDFA (FiniteStateAutomaton& fsa, std::vector<FSATableElement> elements)
 
  
   
-  //cout<< "elements: " <<endl;
   for (vector<FSATableElement>::iterator it = elements.begin(); it != elements.end(); it++) {
+    // To check every aceeptable alphabet save every possible alphabet
     alphabet.insert(it->str[0]);
-    //cout<<it->str[0]<<endl;
   }
   
-  
-  //cout<<"alphabt: ";
-  for (set<char>::iterator it = alphabet.begin(); it != alphabet.end(); it++) {
-    //cout<<*it<<" ";
-  }
-  //cout<<endl;
-
   while (!states_queue.empty()) {
     state = states_queue.front();
     for (set<char>::const_iterator it = alphabet.begin(); it != alphabet.end(); it++) {
-      //cout<<"chul ryuk : "<<*it<<endl;
+      // Remove the epsilon from NFA
       if (*it != '\0') {
-        //cout<<"string : "<<*it<<"   state :";
-        //print_set(state);
-        //cout<<"go to"<<endl;
         dfa_state.next_states = possible_state(elements, *it, state);
         dfa_state.state = state;
         dfa_state.term = *it;
 
-        //print_set(dfa_state.next_states);
         if (dfa_state.next_states.empty()) continue;
 
         vector<FSAdfaElement>::iterator it2;
@@ -67,46 +56,36 @@ void NFAtoDFA (FiniteStateAutomaton& fsa, std::vector<FSATableElement> elements)
           states_queue.push(state);
         }
       }
-      //cout<<"chul end"<<endl;
     }
-    //cout<<"dequeue"<<endl;
     states_queue.pop();
   }
 }
 
 set<int> possible_state (const vector<FSATableElement> elements, const char term, set<int> start_states) {
+  // Find all possible state of states can move by term
   set<int> possible_states;
   set<int> mid_states;
 
-  //cout<< "term : "<<term<<endl;
-  //cout<< "hi"<<endl;
   for (set<int>::iterator it = start_states.begin(); it != start_states.end(); it++) {
+    // Find all possible state which can move by epsilon
     epsilon_state (elements, mid_states, *it);
   }
-  //cout<<"bye"<<endl;
-//  cout<<"possible state string : "<< term <<endl;
-//  print_set(mid_states);
 
   for (set<int>::iterator it = start_states.begin(); it != start_states.end(); it++) {
     for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) {
       set<int> temp;
+      // Check epsilon state after add other possible states
       epsilon_state(elements, temp, it->state);
-      //cout<<"str : ";
-      //cout<<it->str[0]<<endl;
+
       if (it->str[0] == '\0') continue;
+
       if (mid_states.find(it->state) != mid_states.end()) {
         if (term == it->str[0]) {
           if (mid_states != temp) {
-            //cout<<"in temp"<<endl;
             temp = possible_state(elements, term, temp);
-            //print_set(temp);
             possible_states.insert(temp.begin(), temp.end());
-            //print_set(possible_states);
           }
-      //cout<<"temp_state "<<it->state<<endl;
-            //print_set(temp);
           possible_states.insert(it->next_state);
-
         }
       }
     }
@@ -116,6 +95,7 @@ set<int> possible_state (const vector<FSATableElement> elements, const char term
 }
 
 void epsilon_state (const vector<FSATableElement> elements, set<int>& mid_states, int state) {
+  // Find all possible states move by epsilon
   mid_states.insert(state);
   for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) {
     if (it->str.length() == 0 && it->state == state && mid_states.find(it->next_state) == mid_states.end()) {
@@ -140,22 +120,20 @@ bool RunFSA(const FiniteStateAutomaton& fsa, const string& str) {
     return false;
   }
 
-  //cout<<"run state"<<endl;
   for (int i = 0; i < str.length(); i++) {
     // If string is not null
     vector<FSAdfaElement>::const_iterator it;
     for (it = fsa.elem.begin(); it != fsa.elem.end(); it++) {
       if (it->state == current_state && it->term == str[i]) {
-        //print_set(current_state);
         current_state = it->next_states;
         break;
       }
     }
     if (it == fsa.elem.end()) return false;
   }
-  //print_set(current_state);
   set<int>::const_iterator it;
   for (it = current_state.begin(); it != current_state.end(); it++) {
+    // Check last state is accept state
     for (vector<int>::const_iterator it2 = fsa.accept_states.begin(); it2 != fsa.accept_states.end(); it2++) {
       if (*it == *it2) return true;
     }
@@ -236,17 +214,6 @@ bool BuildFSA(const std::vector<FSATableElement>& elements,
     }
   }
 
-  /*
-  cout<<"accept_state : ";
-  for (int i = 0; i < fsa->accept_states.size(); i++) {
-    cout<<fsa->accept_states[i]<<" ";
-  }
-  cout<<endl;;
-  cout<<elements.size()<<endl;
-  for (int i = 0; i < elements.size(); i++) {
-    cout<<elements[i].str<<endl;
-  }
-  */
   NFAtoDFA(*fsa, split_elements);
   print_dfa (*fsa);
 
