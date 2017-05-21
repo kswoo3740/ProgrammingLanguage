@@ -36,6 +36,9 @@ struct LRRule {
 
 struct LRParser {
   // Design your LRParser structure.
+  std::vector<LRTableElement> action_table;
+  std::vector<LRTableElement> goto_table;
+  std::vector<LRRule> rules;
 };
 
 // Homework 1.2
