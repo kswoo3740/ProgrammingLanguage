@@ -1,195 +1,298 @@
-// PL homework: hw1
-// fsa.cc
+// PL homework: hw2
+// regexp_matcher.cc
 
+#include "regexp_matcher.h"
 #include <iostream>
-#include <queue>
-#include "fsa.h"
-
-#define DISABLE_LOG true
-#define LOG \
-    if (DISABLE_LOG) {} else std::cerr
+#include <string>
 
 using namespace std;
 
-void NFAtoDFA (FiniteStateAutomaton& fsa, std::vector<FSATableElement> elements) {
-  // Change NFA to DFA
-  queue<set<int> > states_queue;
-  vector<FSAdfaElement> states;
-  FSAdfaElement dfa_state;
-  set<int> state;
-  set<char> alphabet;
+void makeGraph(const char* regexp, vector<FSATableElement>& elements, set<int>& state, const vector<char> alphabet, int& cursor, int first_state, int final_state) {
+	char handle;
+	int current_state = first_state;
+  state.insert(final_state);
+	state.insert(current_state);
+	int next_state = state.size() + 1;
+	int start_cursor = cursor;
+	cout << "make" << "first : "<<first_state<<"   final : "<<final_state<<endl;
 
-  state.insert(1); // Insert start state
-  epsilon_state (elements, state, 1);  // Find all possible start state
-  fsa.start_state = state;
-  states_queue.push(state);
+	while ((handle = regexp[cursor]) != '\0' && cursor < strlen(regexp)) {
+		cursor++;
+		if (handle == ANYCHAR) {
+			// Input is '.'
+			cout << "Any Char!" << endl;
+			FSATableElement elem;
+			elem.state = current_state;
+			elem.next_state = next_state;
+			elem.str.append(alphabet.begin(), alphabet.end());
+			elements.push_back(elem);
 
- 
-  
-  for (vector<FSATableElement>::iterator it = elements.begin(); it != elements.end(); it++) {
-    // To check every aceeptable alphabet save every possible alphabet
-    alphabet.insert(it->str[0]);
-  }
-  
-  while (!states_queue.empty()) {
-    state = states_queue.front();
-    for (set<char>::const_iterator it = alphabet.begin(); it != alphabet.end(); it++) {
-      // Remove the epsilon from NFA
-      if (*it != '\0') {
-        dfa_state.next_states = possible_state(elements, *it, state);
-        dfa_state.state = state;
-        dfa_state.term = *it;
+			if (regexp[cursor] == STAR) {
+				cout << "STAR" << endl;
+				elem.str = "";
+				elements.push_back(elem);
+				elem.state = next_state;
+				elem.next_state = current_state;
+				elem.str = "";
+				elements.push_back(elem);
+				cursor++;
+			}
+			//for (int i = 0; i < elem.str.length(); i++) cout<< "str : "<< elem.str[i]<<endl;
+		}
+		else if (handle == LPAREN) {
+			cout << "LParen" << endl;
+			// Input is '('
+			makeGraph(regexp, elements, state, alphabet, cursor, current_state, next_state);
+			if (regexp[cursor] == STAR) {
+				cout << "STAR" << endl;
+				FSATableElement elem;
+				elem.state = current_state;
+				elem.next_state = next_state;
+				elem.str = "";
+				elements.push_back(elem);
+				elem.state = next_state;
+				elem.next_state = current_state;
+				elem.str = "";
+				elements.push_back(elem);
+				cursor++;
+			}
+		}
+		else if (handle == RPAREN) {
+			cout << "RParen" << endl;
+			// Input is ')'
+			// need more???
+			if (regexp[cursor] == STAR && regexp[start_cursor - 1] == LPAREN) {
+				cout << "STAR" << endl;
+				FSATableElement elem;
+				elem.state = first_state;
+				elem.next_state = final_state;
+				elem.str = "";
+				elements.push_back(elem);
+				elem.state = final_state;
+				elem.next_state = first_state;
+				elements.push_back(elem);
+				cursor++;
+			}
+			break;
+		}
+		/*else if (handle == LPAREN) {
+			int paren_count = 1;
+			int end;
+      int new_cursor = 0;
+      char *subexp;
+      FSATableElement elem;
 
-        if (dfa_state.next_states.empty()) continue;
+      elem.state = current_state;
+      elem.next_state = next_state;
+      elem.str = "";
+      elements.push_back(elem);
+      state.insert(next_state);
+      current_state = next_state;
+      next_state = state.size() + 1;
 
-        vector<FSAdfaElement>::iterator it2;
-        for (it2 = fsa.elem.begin(); it2 != fsa.elem.end(); it2++) {
-          if (it2->state == dfa_state.state && it2->next_states == dfa_state.next_states && it2->term  == dfa_state.term) break;
-        }
-
-        if (it2 == fsa.elem.end()) {
-          fsa.elem.push_back(dfa_state);
-          states_queue.push(state);
-          state = dfa_state.next_states;
-          states_queue.push(state);
-        }
-      }
-    }
-    states_queue.pop();
-  }
-}
-
-set<int> possible_state (const vector<FSATableElement> elements, const char term, set<int> start_states) {
-  // Find all possible state of states can move by term
-  set<int> possible_states;
-  set<int> mid_states;
-
-  for (set<int>::iterator it = start_states.begin(); it != start_states.end(); it++) {
-    // Find all possible state which can move by epsilon
-    epsilon_state (elements, mid_states, *it);
-  }
-
-  for (set<int>::iterator it = start_states.begin(); it != start_states.end(); it++) {
-    for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) {
-      set<int> temp;
-      // Check epsilon state after add other possible states
-      epsilon_state(elements, temp, it->state);
-
-      if (it->str[0] == '\0') continue;
-
-      if (mid_states.find(it->state) != mid_states.end()) {
-        if (term == it->str[0]) {
-          if (mid_states != temp) {
-            temp = possible_state(elements, term, temp);
-            possible_states.insert(temp.begin(), temp.end());
+			for (int i = cursor; i < strlen(regexp); i++) {
+				if (regexp[i] == '(') paren_count++;
+        else if (regexp[i] == ')') {
+          paren_count--;
+          if (paren_count == 0) {
+            end = i;
+            break;
           }
-          possible_states.insert(it->next_state);
         }
+			}
+      subexp = new char(end - cursor + 1);
+      for (int i = cursor; i < end; i++) {
+        subexp[i - cursor] = regexp[i];
       }
-    }
-  }
-
-  for (set<int>::iterator it = possible_states.begin(); it != possible_states.end(); it++) {
-    epsilon_state(elements, possible_states, *it);
-  }
-  
-  return possible_states;
-}
-
-void epsilon_state (const vector<FSATableElement> elements, set<int>& mid_states, int state) {
-  // Find all possible states move by epsilon
-  mid_states.insert(state);
-  for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) {
-    if ((it->str.length() == 0) && (it->state == state) && (mid_states.find(it->next_state) == mid_states.end())) {
-      mid_states.insert(it->next_state);
-      epsilon_state(elements, mid_states, it->next_state);
-    }
-  }
-}
-
-bool RunFSA(const FiniteStateAutomaton& fsa, const string& str) {
-  // Implement this function.
-  set<int> current_state = fsa.start_state;
-
-  if (str == "\0") {
-    // If string is null
-    set<int>::const_iterator it;
-    for (it = current_state.begin(); it != current_state.end(); it++) {
-      for (vector<int>::const_iterator it2 = fsa.accept_states.begin(); it2 != fsa.accept_states.end(); it2++) {
-        if (*it == *it2) return true;
+      subexp[end - cursor] = '\0';
+      cout << "substring : " << subexp << endl;
+      makeGraph(subexp, elements, state, alphabet, new_cursor, current_state, next_state);
+      cursor = end + 1;
+      if (regexp[cursor] == STAR) {
+          FSATableElement elem;
+          elem.state = current_state;
+          elem.next_state = next_state;
+          elem.str = "";
+          elements.push_back(elem);
+          elem.state = next_state;
+          elem.next_state = current_state;
+          elem.str = "";
+          elements.push_back(elem);
+          cursor++;
       }
-    }
-    return false;
-  }
+		}*/
+		else if (handle == LSET) {
+			cout << "LSet" << endl;
+			// Input is '['
+			FSATableElement elem;
+			elem.state = current_state;
+			elem.next_state = next_state;
+      elem.str = "";
+      elements.push_back(elem);
+      state.insert(next_state);
+      current_state = next_state;
+      next_state = state.size() + 1;
 
-  for (int i = 0; i < str.length(); i++) {
-    // If string is not null
-    vector<FSAdfaElement>::const_iterator it;
-    for (it = fsa.elem.begin(); it != fsa.elem.end(); it++) {
-      if (it->state == current_state && it->term == str[i]) {
-        current_state = it->next_states;
-        break;
-      }
-    }
-    if (it == fsa.elem.end()) return false;
-  }
-  set<int>::const_iterator it;
-  for (it = current_state.begin(); it != current_state.end(); it++) {
-    // Check last state is accept state
-    for (vector<int>::const_iterator it2 = fsa.accept_states.begin(); it2 != fsa.accept_states.end(); it2++) {
-      if (*it == *it2) return true;
-    }
-  }
-  return false;
-}
+      elem.state = current_state;
+      elem.next_state = next_state;
+			while ((handle = regexp[cursor++]) != RSET) {
+				/*if (handle == LPAREN) {
+					makeGraph(regexp, elements, state, alphabet, cursor, current_state, next_state);
+				}*/
+				elem.str.push_back(handle);
+			}
+			elements.push_back(elem);
 
-bool BuildFSA(const std::vector<FSATableElement>& elements,
-              const std::vector<int>& accept_states,
-              FiniteStateAutomaton* fsa) {
-  // Implement this function.
-
-  // If cannot reach to accept states then return false
-
-  vector<FSATableElement> split_elements;
-
-  // Set accept_states of fsa
-  fsa->accept_states.assign(accept_states.begin(), accept_states.end());
-
-  // If FSATableElement has more than one char in str split it
-  for (int i = 0; i < elements.size(); i++) {
-    if (elements[i].str.length() <= 1) {
-      split_elements.push_back(elements[i]);
-    } else {
-      for (int j = 0; j < elements[i].str.length(); j++) {
-        FSATableElement temp;
-        temp.state = elements[i].state;
-        temp.next_state = elements[i].next_state;
-        temp.str.push_back(elements[i].str[j]);
-        split_elements.push_back(temp);
-      }
-    }
-  }
-
-  NFAtoDFA(*fsa, split_elements);
-  print_dfa (*fsa);
-
-  LOG << "num_elements: " << elements.size()
-      << ", accept_states: " << accept_states.size() << endl;
-  return true;
-}
-
-void print_dfa (FiniteStateAutomaton& fsa) {
-  cout<<"dfa : "<<endl;
-  for (vector<FSAdfaElement>::iterator it = fsa.elem.begin(); it != fsa.elem.end(); it++) {
-    print_set(it->state);
-    print_set(it->next_states);
-    cout<<it->term<<endl;
-  }
-}
+			if (regexp[cursor] == STAR) {
+				elem.str = "";
+				elements.push_back(elem);
+				elem.state = next_state;
+				elem.next_state = current_state;
+				elem.str = "";
+				elements.push_back(elem);
+				cursor++;
+			}
+		}
+		/*else if (handle == STAR) {
+			cout << "Star" << endl;
+			// Input is '*'
+			// need to implement
+			if (regexp[cursor - 2] != RPAREN) {
+				FSATableElement elem;
+				elem.state = current_state;
+				elem.next_state = current_state;
+				elem.str = "";
+				elements.push_back(elem);
+			}
+			continue;
+		}*/
     
-void print_set (set<int> printing) {
-  cout<< "{ ";
-  for (set<int>::iterator it = printing.begin(); it != printing.end(); it++) 
-    cout<<*it<<" ";
-  cout<<"}"<<endl;
+		else if (handle == OR) {
+			cout << "OR" << endl;
+			// Input is '|'
+			makeGraph(regexp, elements, state, alphabet, cursor, first_state, current_state);
+			if (regexp[cursor - 1] == RPAREN) {
+				if (regexp[cursor] == STAR && regexp[start_cursor - 1] == LPAREN) {
+					cout << "STAR" << endl;
+					FSATableElement elem;
+					elem.state = first_state;
+					elem.next_state = final_state;
+					elem.str = "";
+					elements.push_back(elem);
+					elem.state = final_state;
+					elem.next_state = first_state;
+					elements.push_back(elem);
+					cursor++;
+				}
+				cout << "end or" << endl;
+				break;
+			}
+			else continue;
+		}
+    /*else if (handle == OR) {
+        char *subexp = new char(strlen(regexp) - cursor + 2);
+        int new_cursor = 0;
+        for (int i = cursor; i < strlen(regexp); i++) {
+            subexp[i - cursor] = regexp[i];
+        }
+        subexp[strlen(regexp) - cursor + 1] = '\0';
+        cout << "substring : "<<subexp << endl;
+        makeGraph(subexp, elements, state, alphabet, new_cursor, first_state, final_state);
+    }*/
+		else {
+			cout << "character : " << handle << endl;
+			// Input is character
+			FSATableElement elem;
+			elem.state = current_state;
+			elem.next_state = next_state;
+			elem.str.push_back(handle);
+			elements.push_back(elem);
+
+			if (regexp[cursor] == STAR) {
+				cout << "STAR" << endl;
+				elem.str = "";
+				elements.push_back(elem);
+				elem.state = next_state;
+				elem.next_state = current_state;
+				elem.str = "";
+				elements.push_back(elem);
+				cursor++;
+			}
+		}
+		current_state = next_state;
+		state.insert(current_state);
+		next_state = state.size() + 1;
+	}
+	if (current_state != final_state) {
+		FSATableElement elem;
+		elem.state = current_state;
+		elem.next_state = final_state;
+		elem.str = "";
+		elements.push_back(elem);
+		cout << "current  : " << current_state << "final : " << final_state << endl;
+		cout << "end make" << endl;
+	}
+}
+
+bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
+	vector<FSATableElement> elements;
+	int current_state = 1;
+	int next_state = 2;
+	int cursor = 0;
+	vector<char> alphabet;
+	int paren_count = 0;
+	int set_count = 0;
+	vector<int> accept_states;
+	accept_states.push_back(2);
+
+	//FiniteStateAutomaton fsa = new FiniteStateAutomaton;
+
+	for (int i = 0; i < strlen(regexp); i++) {
+		if (regexp[i] == LPAREN) paren_count++;
+		else if (regexp[i] == RPAREN) paren_count--;
+		if (paren_count < 0) return false;
+	}
+
+	if (paren_count != 0) return false;
+
+	for (int i = 0; i < strlen(regexp); i++) {
+		if (regexp[i] == LSET) set_count++;
+		else if (regexp[i] == RSET) set_count--;
+		if (set_count < 0) return false;
+	}
+
+	if (set_count != 0) return false;
+
+	for (char alpha = 'a'; alpha <= 'z'; alpha++) alphabet.push_back(alpha);
+	for (char alpha = 'A'; alpha <= 'Z'; alpha++) alphabet.push_back(alpha);
+	for (char alpha = '0'; alpha <= '9'; alpha++) alphabet.push_back(alpha);
+	alphabet.push_back('_');
+
+	set<int> state;
+	state.insert(1);
+	state.insert(2);
+
+	makeGraph(regexp, elements, state, alphabet, cursor, current_state, next_state);
+
+	cout << elements.size() << endl;
+	for (int i = 0; i < elements.size(); i++) {
+		cout << "state : " << elements[i].state << "next : " << elements[i].next_state << "str : " << elements[i].str << endl;
+	}
+	cout << "going to build" << endl;
+	//regexp_matcher->fsa->accept_states.assign(accept_states.begin(), accept_states.end());
+	BuildFSA(elements, accept_states, &regexp_matcher->fsa);
+
+	return true;
+}
+
+bool RunRegExpMatcher(const RegExpMatcher& regexp_matcher, const char* str) {
+	return RunFSA(regexp_matcher.fsa, str);
+}
+
+void print_elem(vector<FSATableElement>& elem) {
+	for (int i = 0; i < elem.size(); i++) {
+		cout << "state : " << elem[i].state << endl;
+		cout << "next_state : " << elem[i].next_state << endl;
+		cout << "str : " << elem[i].str << endl;
+	}
 }
