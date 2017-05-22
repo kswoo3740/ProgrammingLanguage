@@ -3,42 +3,46 @@
 
 #include "regexp_matcher.h"
 #include <iostream>
+#include <string>
 
 using namespace std;
 
 
-void printRegExp (RegExp* expr) {
-  if (expr->token_type == CHAR) {
-    cout<<expr->character;
-  } else if (expr->token_type == ANY) {
-    cout<<ANYCHAR;
-  } else if (expr->token_type == STAR_T) {
-    printRegExp (expr->elem[0][0]);
-    cout<<STAR;
-  } else {
-    if (expr->token_type == PAREN) {
-      cout<<LPAREN;
-    } else if (expr->token_type == SET) {
-      cout<<LSET;
-    }
-
-    for (int i = 0; i <= expr->count_or; i++) {
-      if (i != 0) cout<<OR;
-      for (int j = 0; j < expr->elem[i].size(); j++) {
-        printRegExp (expr->elem[i][j]);
-      }
-    }
-
-    if (expr->token_type == PAREN) {
-      cout<<RPAREN;
-    } else if (expr->token_type == SET) {
-      cout<<RSET;
-    }
-  }
-}
    
+/*
 int makeGraph (RegExp& reg_expr, vector<FSATableElement>& fsa_elem, set<char> alphabet, int start_state, int next_state) {
   cout<<"make"<<endl;
+  int current_state = next_state;
+
+  if (reg_expr.token_type == REGEXP) {
+
+  } else if (reg_expr.token_type == CHAR) {
+    FSATableElement elem;
+    elem.state = start_state;
+    elem.next_state = current_state;
+    elem.str[0] = reg_expr.character;
+    fsa_elem.push_back(elem);
+  } else if (reg_expr.token_type == ANY) {
+    FSATableElement elem;
+    elem.state = start_state;
+    elem.next_state = current_state;
+    for (set<char>::iterator it = alphabet.begin(); it != alphabet.end(); it++) {
+      elem.append(*it);
+    }
+    fsa_elem.push_back(elem);
+  } else if (reg_expr.token_type == SET) {
+    FSATableElement elem;
+    elem.state = start_state;
+    elem.next_state = current_state;
+    for (set<
+
+  } else if (reg_expr.token_type == STAR_T) {
+
+  }
+    
+
+
+  
   int current_state = next_state;
 
   if (reg_expr.token_type == REGEXP || reg_expr.token_type == PAREN) {
@@ -48,6 +52,7 @@ int makeGraph (RegExp& reg_expr, vector<FSATableElement>& fsa_elem, set<char> al
       start_elem.state = start_state;
       start_elem.next_state = current_state;
       start_elem.str = "\0";
+      cout<<"reg fsa"<<endl;
       fsa_elem.push_back(start_elem);
 
       for (int j = 0; j < reg_expr.elem[i].size(); j++) {
@@ -59,9 +64,10 @@ int makeGraph (RegExp& reg_expr, vector<FSATableElement>& fsa_elem, set<char> al
           elem.str[0] = reg_expr.elem[i][j]->character;
           elem.next_state = ++current_state;
           fsa_elem.push_back(elem);
+          cout<<"charactet in rege fsa"<<endl;
         } else if (reg_expr.elem[i][j]->token_type == ANY) {
           // Token is '.'
-          cout<<", token"<<endl;
+          cout<<". token"<<endl;
           for (set<char>::iterator it = alphabet.begin(); it != alphabet.end(); it++) {
             FSATableElement elem;
             elem.state = current_state;
@@ -160,16 +166,132 @@ int makeGraph (RegExp& reg_expr, vector<FSATableElement>& fsa_elem, set<char> al
     current_state = next_state;
   }
   return current_state;
+  
 }
+*/
 
+void makeGraph (const char* regexp, vector<FSATableElement>& elements, set<int>& state, const vector<char> alphabet, int& cursor, int first_state, int final_state) {
+  char handle;
+  int current_state = first_state;
+  state.insert(current_state);
+  int next_state = state.size() + 1;
 
+  while ((handle = regexp[cursor++])  != '\0') {
+    if (handle == ANYCHAR) {
+      // Input is '.'
+      cout<<"Any Char!"<<endl;
+      FSATableElement elem;
+      elem.state = current_state;
+      elem.next_state = next_state;
+      elem.str.append(alphabet.begin(), alphabet.end());
+      elements.push_back(elem);
+    } else if (handle == LPAREN) {
+      cout<<"LParen"<<endl;
+      // Input is '('
+      makeGraph (regexp, elements, state, alphabet, cursor, current_state, next_state);
+    } else if (handle == RPAREN) {
+      cout<<"RParen"<<endl;
+      // Input is ')'
+      // need more???
+      if (regexp[cursor] == STAR) {
+        FSATableElement elem;
+        elem.state = first_state;
+        elem.next_state = final_state;
+        elem.str = "";
+        elements.push_back(elem);
+        cursor++;
+      }
+      break;;
+    } else if (handle == LSET) {
+      cout<<"LSet"<<endl;
+      // Input is '['
+      FSATableElement elem;
+      elem.state = current_state;
+      elem.next_state = next_state;
+      while ((handle = regexp[cursor++]) != RSET) {
+        if (handle == LPAREN) {
+          makeGraph (regexp, elements, state, alphabet, cursor, current_state, next_state);
+        } 
+        elem.str.push_back(handle);
+      }
+      elements.push_back(elem);
+    } else if (handle == STAR) {
+      cout<<"Star"<<endl;
+      // Input is '*'
+      // need to implement
+      if (regexp[cursor - 2] != RPAREN) {
+        FSATableElement elem;
+        elem.state = current_state;
+        elem.next_state = current_state;
+        elem.str = "";
+        elements.push_back(elem);
+      } 
+      continue;
+    } else if (handle == OR) {
+      cout<<"OR"<<endl;
+      // Input is '|'
+      makeGraph (regexp, elements, state, alphabet, cursor, current_state, next_state);
+      if (regexp[cursor - 1] == RPAREN) break;;
+    } else {
+      cout<<"character"<<endl;
+      // Input is character
+      FSATableElement elem;
+      elem.state = current_state;
+      elem.next_state = next_state;
+      elem.str.push_back(handle);
+      elements.push_back(elem);
+    }
+    current_state = next_state;
+    next_state = state.size() + 1;
+    state.insert(current_state);
+  }
+  FSATableElement elem;
+  elem.state = current_state;
+  elem.next_state = final_state;
+  elem.str = "";
+}
           
 bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
+  vector<FSATableElement> elements;
+  int current_state = 1;
+  int next_state =2;
+  int cursor = 0;
+  vector<char> alphabet;
+  int paren_count = 0;
+  int set_count = 0;
+
+  for (int i = 0; i < sizeof(regexp) / sizeof(char); i++) {
+    if (regexp[i] == LPAREN) paren_count++;
+    else if (regexp[i] == RPAREN) paren_count--;
+    if (paren_count < 0) return false;
+  }
+
+  if (paren_count != 0) return false;
+
+  for (int i = 0; i < sizeof(regexp) / sizeof(char); i++) {
+    if (regexp[i] == LSET) set_count++;
+    else if (regexp[i] == RSET) set_count--;
+    if (set_count < 0) return false;
+  }
+
+  if (set_count != 0) return false;
+
+  cout<<"alphabet"<<endl;
+  for (char alpha = 'a'; alpha <= 'z'; alpha++) alphabet.push_back(alpha);
+  for (char alpha = 'A'; alpha <= 'Z'; alpha++) alphabet.push_back(alpha);
+  for (char alpha = '0'; alpha <= '9'; alpha++) alphabet.push_back(alpha);
+
+  set<int> state;
+  
+  cout<<"hi"<<endl;
+  makeGraph (regexp, elements, state, alphabet, cursor, current_state, next_state);
+  cout<<"bye"<<endl;
+  
+  /*
   RegExp start_expr;
   set<char> alphabet;
   char handle;
   int cursor = 0;
-  cout<<"BouildRegExp"<<endl;
 
   start_expr.token_type = REGEXP;
   start_expr.character = '\0';
@@ -185,7 +307,6 @@ bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
 
     handle = regexp[++cursor];
   }
-  cout<<"handle"<<endl;
 
   for (char alpha = 'a'; alpha <= 'z'; alpha++) alphabet.insert(alpha);
   for (char alpha = 'A'; alpha <= 'Z'; alpha++) alphabet.insert(alpha);
@@ -198,7 +319,6 @@ bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
   handle = regexp[cursor++];
 
   while (handle != '\0') {
-    cout<<"handle in"<<endl;
     if (handle == ANYCHAR) {
       cout<<"handle ."<<endl;
       RegExp *child_expr = new RegExp;
@@ -212,7 +332,7 @@ bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
     } else if (handle == LPAREN) {
       cout<<"handle ("<<endl;
       RegExp* child_expr = new RegExp;
-      child_expr->token_type = ANY;
+      child_expr->token_type = PAREN;
       child_expr->character = '\0';
       child_expr->elem = vector<vector<RegExp*> >(1);
       child_expr->elem[0].resize(0);
@@ -227,7 +347,7 @@ bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
     } else if (handle == LSET) {
       cout<<"handle ["<<endl;
       RegExp* child_expr = new RegExp;
-      child_expr->token_type = ANY;
+      child_expr->token_type = SET;
       child_expr->character = '\0';
       child_expr->elem = vector<vector<RegExp*> >(1);
       child_expr->elem[0].resize(0);
@@ -288,8 +408,13 @@ bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher) {
   regexp_matcher->fsa = new FiniteStateAutomaton();
   cout<< "before FSA"<<endl;
   print_elem(fsa_elem);
-  
-  BuildFSA (fsa_elem, accept_state, regexp_matcher->fsa);
+  */
+
+  vector<int> accept_states;
+  cout<<"hey"<<endl;
+  accept_states.push_back(2);
+  cout<<"going to build";
+  BuildFSA (elements, accept_states, regexp_matcher->fsa);
 
   return true;
 }
