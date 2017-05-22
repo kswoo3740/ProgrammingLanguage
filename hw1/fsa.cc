@@ -21,8 +21,6 @@ void NFAtoDFA (FiniteStateAutomaton& fsa, std::vector<FSATableElement> elements)
 
   state.insert(1); // Insert start state
   epsilon_state (elements, state, 1);  // Find all possible start state
-  //cout<<"start state : ";
-  //print_set(state);
   fsa.start_state = state;
   states_queue.push(state);
 
@@ -90,6 +88,10 @@ set<int> possible_state (const vector<FSATableElement> elements, const char term
       }
     }
   }
+
+  for (set<int>::iterator it = possible_states.begin(); it != possible_states.end(); it++) {
+    epsilon_state(elements, possible_states, *it);
+  }
   
   return possible_states;
 }
@@ -98,7 +100,7 @@ void epsilon_state (const vector<FSATableElement> elements, set<int>& mid_states
   // Find all possible states move by epsilon
   mid_states.insert(state);
   for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) {
-    if (it->str.length() == 0 && it->state == state && mid_states.find(it->next_state) == mid_states.end()) {
+    if ((it->str.length() == 0) && (it->state == state) && (mid_states.find(it->next_state) == mid_states.end())) {
       mid_states.insert(it->next_state);
       epsilon_state(elements, mid_states, it->next_state);
     }
@@ -141,58 +143,12 @@ bool RunFSA(const FiniteStateAutomaton& fsa, const string& str) {
   return false;
 }
 
-/*
-bool check_build (const std::vector<FSATableElement>& elements, const std::vector<int>& accept_states) {
-  // Check this nfa can reach to accept state 
-  queue<int> state_queue;
-  vector<int> states;
-
-  for (int i = 0; i < accept_states.size(); i++) {
-    cout<< accept_states[i]<<endl;
-  }
-  state_queue.push(1);
-  
-  while (!state_queue.empty()) {
-    int state = state_queue.front();
-    state_queue.pop();
-      
-    bool exist = false;
-    for (vector<int>::iterator it = states.begin(); it != states.end(); it++) 
-      if (*it == state) exist = true; 
-
-    if (!exist) {
-      states.push_back(state);
-
-      for (vector<FSATableElement>::const_iterator it = elements.begin(); it != elements.end(); it++) 
-        if (it->state == state)
-          state_queue.push(it->next_state);
-    }
-  }
-
-  bool buildable = false;
-  for (vector<int>::const_iterator it = accept_states.begin(); it != accept_states.end(); it++) {
-    for (vector<int>::iterator it2 = states.begin(); it2 != states.end(); it2++) {
-      if (*it == *it2) {
-          buildable = true;
-          break;
-      }
-    }
-    if (buildable) break;
-  }
-
-  return buildable;
-}
-*/
-
-
 bool BuildFSA(const std::vector<FSATableElement>& elements,
               const std::vector<int>& accept_states,
               FiniteStateAutomaton* fsa) {
   // Implement this function.
-  // bool buildable = check_build (elements, accept_states);
 
   // If cannot reach to accept states then return false
-  // if (!buildable) return false;
 
   vector<FSATableElement> split_elements;
 
@@ -208,7 +164,7 @@ bool BuildFSA(const std::vector<FSATableElement>& elements,
         FSATableElement temp;
         temp.state = elements[i].state;
         temp.next_state = elements[i].next_state;
-        temp.str[0] = elements[i].str[j];
+        temp.str.push_back(elements[i].str[j]);
         split_elements.push_back(temp);
       }
     }

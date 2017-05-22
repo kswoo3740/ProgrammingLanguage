@@ -26,7 +26,7 @@ struct RegExp {
 
 struct RegExpMatcher {
   // Design your RegExpMatcher structure.
-  FiniteStateAutomaton* fsa;
+  FiniteStateAutomaton fsa;
   //RegExp* expr;
 };
 
