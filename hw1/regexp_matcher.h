@@ -5,25 +5,6 @@
 #define _PL_HOMEWORK_REGEXP_MATCHER_H_
 #include "fsa.h"
 
-/*
-enum TokenType {
-  REGEXP,
-  CHAR,
-  ANY,
-  SET,
-  PAREN,
-  STAR_T,
-};
-
-struct RegExp {
-  TokenType token_type;
-  char character;
-  std::vector< std::vector<RegExp*> > elem;
-  RegExp* parent;
-  int count_or;
-};
-*/
-
 struct RegExpMatcher {
   // Design your RegExpMatcher structure.
   FiniteStateAutomaton fsa;
@@ -40,7 +21,7 @@ const char OR = '|';
 
 void print_elem (std::vector<FSATableElement>& elem);
 
-void makeGraph (const char* regexp, std::vector<FSATableElement>& elements, std::set<int>& state, const std::vector<char> alphabet, int& cursor, int first_state, int final_state);
+bool makeGraph (const char* regexp, std::vector<FSATableElement>& elements, std::set<int>& state, const std::vector<char> alphabet, int& cursor, int first_state, int final_state);
 
 // Homework 1.3
 bool BuildRegExpMatcher(const char* regexp, RegExpMatcher* regexp_matcher);

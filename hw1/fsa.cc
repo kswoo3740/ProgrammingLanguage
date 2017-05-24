@@ -172,7 +172,7 @@ bool BuildFSA(const std::vector<FSATableElement>& elements,
 	}
 
 	NFAtoDFA(*fsa, split_elements);
-	print_dfa(*fsa);
+	//print_dfa(*fsa);
 
 	LOG << "num_elements: " << elements.size()
 		<< ", accept_states: " << accept_states.size() << endl;
